@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F1115"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ScreenLink"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Link this phone's screen to a Chromebook. Click the mirror on the Chromebook to control the phone."
+            android:textColor="#A1A1AA"
+            android:textSize="14sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Chromebook ScreenLink receiver URL"
+            android:textColor="#A1A1AA"
+            android:textSize="12sp" />
+        <EditText
+            android:id="@+id/hostInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="#18181B"
+            android:hint="http://192.168.x.x:8080"
+            android:inputType="textUri"
+            android:padding="14dp"
+            android:textColor="#E8EAED"
+            android:textColorHint="#71717A" />
+        <CheckBox
+            android:id="@+id/audioCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:checked="true"
+            android:text="Include app audio (Android 10+)"
+            android:textColor="#E8EAED" />
+        <CheckBox
+            android:id="@+id/controlCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Allow remote control from Chromebook"
+            android:textColor="#E8EAED" />
+        <Button
+            android:id="@+id/accessBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#3F3F46"
+            android:text="Enable Accessibility (required for control)"
+            android:textAllCaps="false"
+            android:textColor="#E8EAED" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Quality"
+            android:textColor="#A1A1AA"
+            android:textSize="12sp" />
+        <Spinner
+            android:id="@+id/qualitySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="#18181B" />
+        <Button
+            android:id="@+id/startBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:backgroundTint="#2563EB"
+            android:text="Start ScreenLink"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF" />
+        <Button
+            android:id="@+id/stopBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#3F3F46"
+            android:enabled="false"
+            android:text="Stop"
+            android:textAllCaps="false"
+            android:textColor="#E8EAED" />
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="1) Start receiver on Chromebook\n2) Enable Accessibility here\n3) Start ScreenLink\n4) Click the mirror on the Chromebook to tap the phone"
+            android:textColor="#93C5FD"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>

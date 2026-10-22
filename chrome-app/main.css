@@ -1,0 +1,42 @@
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font:14px/1.45 system-ui,sans-serif;
+  background:#0f1115;color:#e8eaed}
+#app{max-width:420px;margin:0 auto;padding:16px 16px 24px;min-height:100%;
+  display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:700;font-size:18px;letter-spacing:.02em}
+.pill{font-size:11px;padding:3px 10px;border-radius:999px;font-weight:600}
+.pill.off{background:#3f3f46;color:#a1a1aa}
+.pill.on{background:#166534;color:#bbf7d0}
+.pill.play{background:#1d4ed8;color:#dbeafe}
+.pill.mic{background:#9a3412;color:#fed7aa}
+
+.speaker-face{position:relative;display:flex;flex-direction:column;align-items:center;
+  padding:18px 0 8px}
+.ring{border-radius:50%;border:2px solid #27272a;position:absolute}
+.ring.outer{width:220px;height:220px;top:24px}
+.ring.mid{width:160px;height:160px;top:54px;border-color:#3f3f46}
+.cone{width:100px;height:100px;border-radius:50%;margin-top:50px;
+  background:radial-gradient(circle at 35% 30%,#52525b,#18181b 70%);
+  box-shadow:inset 0 0 20px #000,0 8px 24px rgba(0,0,0,.45);
+  display:flex;align-items:center;justify-content:center;z-index:1;
+  transition:transform .12s ease}
+.cone.pulse{transform:scale(1.04)}
+.led{width:10px;height:10px;border-radius:50%;background:#3f3f46;
+  box-shadow:0 0 0 2px #27272a}
+.led.on{background:#22c55e;box-shadow:0 0 12px #22c55e}
+#viz{margin-top:28px;width:100%;max-width:280px;height:56px}
+
+.controls,.panel{background:#18181b;border:1px solid #27272a;border-radius:12px;padding:12px}
+.vol{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-bottom:10px}
+input[type=range]{width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{flex:1;min-width:110px;padding:10px 12px;border:none;border-radius:8px;
+  background:#27272a;color:#e8eaed;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:#2563eb;color:#fff}
+button.danger{background:#b91c1c;color:#fff}
+h3{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#a1a1aa}
+.muted{color:#a1a1aa;font-size:12px;margin:0 0 8px}
+.hint{font-size:12px;color:#93c5fd;margin:8px 0 0;word-break:break-all}
+#log{font:11px ui-monospace,monospace;color:#71717a;min-height:2.5em;white-space:pre-wrap}

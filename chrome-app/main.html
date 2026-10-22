@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ScreenLink</title>
+<link rel="stylesheet" href="main.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand">ScreenLink</div>
+      <div id="status" class="pill off">Off</div>
+    </header>
+
+    <section class="speaker-face" id="speakerFace">
+      <div class="ring outer"></div>
+      <div class="ring mid"></div>
+      <div class="cone" id="cone">
+        <div class="led" id="led"></div>
+      </div>
+      <canvas id="viz" width="280" height="56"></canvas>
+    </section>
+
+    <section class="panel" id="mirrorPanel" style="display:none">
+      <h3>Linked phone (click to control)</h3>
+      <img id="mirror" alt="Screen share" style="width:100%;border-radius:8px;background:#000;min-height:120px">
+      <p class="muted" id="mirrorMeta">Waiting for frames…</p>
+    </section>
+
+    <section class="controls">
+      <label class="vol">
+        <span>Volume</span>
+        <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8">
+        <span id="volPct">80%</span>
+      </label>
+      <div class="row">
+        <button id="btnPower" class="primary">Power On</button>
+        <button id="btnMic">Mic: Off</button>
+      </div>
+      <div class="row">
+        <button id="btnPick">Play file…</button>
+        <button id="btnStop" disabled>Stop</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>From phone (Wi‑Fi)</h3>
+      <p id="netInfo" class="muted">Turn power on to start the receiver.</p>
+      <div class="row">
+        <button id="btnServer" disabled>Start Wi‑Fi receiver</button>
+        <button id="btnCopy" disabled>Copy link</button>
+      </div>
+      <p id="phoneHint" class="hint"></p>
+      <p class="muted" style="margin-top:8px">Screen mirror: install <b>ScreenLink Share</b> APK on the phone, paste this same link, then Start sharing.</p>
+    </section>
+
+    <section class="panel">
+      <h3>Bluetooth</h3>
+      <p class="muted">Classic phone→Chromebook Bluetooth speaker mode is an OS feature this app cannot enable. Use Wi‑Fi screen/audio share or pair BT headphones to play <i>out</i> from the Chromebook.</p>
+    </section>
+
+    <footer id="log"></footer>
+  </div>
+  <audio id="player"></audio>
+  <script src="server.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

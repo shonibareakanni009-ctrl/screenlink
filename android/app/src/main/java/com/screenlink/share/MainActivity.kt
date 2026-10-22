@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
         hostInput.setText(prefs.getString("host", "http://192.168.1.1:8080"))
         qualitySpinner.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_dropdown_item,
-            listOf("Low (faster)", "Medium", "High")
+            listOf("Low (faster)", "Medium", "High", "HD", "Full")
         )
         qualitySpinner.setSelection(prefs.getInt("quality", 0))
 

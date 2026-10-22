@@ -1,4 +1,4 @@
-// Minimal HTTP server (chrome.sockets.tcpServer) – audio upload + screen frames + PCM.
+// Minimal HTTP server (chrome.sockets.tcpServer) – audio, frames, PCM, register.
 (function (g) {
   var serverSocketId = null;
   var clients = {};
@@ -105,7 +105,7 @@
     if (c.method === 'GET') {
       var html =
         '<!doctype html><html><body style="font-family:sans-serif;background:#111;color:#eee;padding:24px">' +
-        '<h1>ScreenLink receiver</h1><p>POST /frame (JPEG), /pcm, /play, or /register here.</p></body></html>';
+        '<h1>ScreenLink receiver</h1><p>POST /frame, /pcm, /play, or /register.</p></body></html>';
       respond(info.socketId, '200 OK', 'text/html; charset=utf-8', str2ab(html));
       delete clients[info.socketId];
       return;
@@ -147,18 +147,31 @@
     }
   }
 
-  function start(port, cb) {
-    PORT = port || 8080;
+  function start(portOrCb, maybeCb) {
+    var cb = null;
+    if (typeof portOrCb === 'function') {
+      cb = portOrCb;
+    } else {
+      if (typeof portOrCb === 'number' && portOrCb > 0) PORT = portOrCb;
+      cb = maybeCb;
+    }
+    if (typeof cb !== 'function') cb = null;
+
+    if (serverSocketId !== null) {
+      if (cb) cb(null, PORT);
+      return;
+    }
     chrome.sockets.tcpServer.create({}, function (createInfo) {
       serverSocketId = createInfo.socketId;
       chrome.sockets.tcpServer.listen(serverSocketId, '0.0.0.0', PORT, function (result) {
         if (result < 0) {
           onLog('Listen failed: ' + result);
-          if (cb) cb(false);
+          serverSocketId = null;
+          if (cb) cb(new Error('listen failed'));
           return;
         }
         onLog('Listening on port ' + PORT);
-        if (cb) cb(true);
+        if (cb) cb(null, PORT);
       });
     });
   }
@@ -197,6 +210,7 @@
     setOnPcm: function (fn) { onPcm = fn; },
     setOnRegister: function (fn) { onRegister = fn; },
     setOnLog: function (fn) { onLog = fn || function () {}; },
-    getPort: function () { return PORT; }
+    getPort: function () { return PORT; },
+    port: PORT
   };
 })(this);

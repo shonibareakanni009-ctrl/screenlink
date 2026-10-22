@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+  "name": "ScreenLink",
+  "version": "1.2.0",
+  "description": "ScreenLink: view and control an Android phone from a Chromebook over Wi-Fi. Chrome 75 compatible.",
+  "app": {
+    "background": {
+      "scripts": ["background.js"]
+    }
+  },
+  "permissions": [
+    "audioCapture",
+    "system.network",
+    "storage",
+    {"fileSystem": ["retainEntries", "write"]},
+    {"sockets": {
+      "tcpServer": [":8080", ":8081"],
+      "tcp": ["*"]
+    }}
+  ],
+  "icons": {}
+}

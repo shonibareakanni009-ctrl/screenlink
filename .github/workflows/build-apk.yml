@@ -19,9 +19,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
+      # v3 fails: Google removed the deprecated "tools" package.
+      # v4 + packages without "tools" works. Also install platform/build-tools for compileSdk 34.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-34 build-tools;34.0.0
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4

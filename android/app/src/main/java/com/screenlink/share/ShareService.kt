@@ -83,9 +83,11 @@ class ShareService : Service() {
                 wantAudio = intent.getBooleanExtra(EXTRA_AUDIO, false)
                 wantControl = intent.getBooleanExtra(EXTRA_CONTROL, true)
                 when (intent.getIntExtra(EXTRA_QUALITY, 0)) {
-                    1 -> { scale = 0.45f; jpegQuality = 50 }
-                    2 -> { scale = 0.55f; jpegQuality = 60 }
-                    else -> { scale = 0.32f; jpegQuality = 35 }
+                    1 -> { scale = 0.45f; jpegQuality = 50 }   // Medium
+                    2 -> { scale = 0.55f; jpegQuality = 60 }   // High
+                    3 -> { scale = 0.75f; jpegQuality = 75 }   // HD
+                    4 -> { scale = 1.00f; jpegQuality = 85 }   // Full
+                    else -> { scale = 0.32f; jpegQuality = 35 } // Low
                 }
                 if (data != null) startShare(code, data)
             }

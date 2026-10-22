@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ScreenLink</string>
+    <string name="notif_title">ScreenLink sharing</string>
+    <string name="notif_text">Screen is linked to your Chromebook</string>
+    <string name="access_desc">ScreenLink uses Accessibility only to inject taps/swipes from the Chromebook so you can control this phone remotely.</string>
+</resources>

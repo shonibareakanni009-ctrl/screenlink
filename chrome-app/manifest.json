@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ScreenLink",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "ScreenLink: view and control an Android phone from a Chromebook over Wi-Fi. Chrome 75 compatible.",
   "app": {
     "background": {

@@ -33,6 +33,7 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.math.max
 
@@ -66,6 +67,9 @@ class ShareService : Service() {
     private var scale = 0.32f
     private var wantAudio = false
     private var wantControl = true
+    private var sessionToken = ""
+    private val latestFrame = AtomicReference<ByteArray?>(null)
+    private val frameSenderRunning = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -80,14 +84,23 @@ class ShareService : Service() {
                     intent.getParcelableExtra(EXTRA_DATA)
                 }
                 hostBase = intent.getStringExtra(EXTRA_HOST) ?: return START_NOT_STICKY
+                sessionToken = try {
+                    val u = URL(hostBase)
+                    val q = u.query ?: ""
+                    q.split("&").mapNotNull { part ->
+                        val kv = part.split("=", limit = 2)
+                        if (kv.size == 2 && kv[0] == "t") kv[1] else null
+                    }.firstOrNull() ?: ""
+                } catch (_: Exception) { "" }
+                hostBase = hostBase.substringBefore("?").trimEnd('/')
                 wantAudio = intent.getBooleanExtra(EXTRA_AUDIO, false)
                 wantControl = intent.getBooleanExtra(EXTRA_CONTROL, true)
                 when (intent.getIntExtra(EXTRA_QUALITY, 0)) {
-                    1 -> { scale = 0.45f; jpegQuality = 50 }   // Medium
-                    2 -> { scale = 0.55f; jpegQuality = 60 }   // High
-                    3 -> { scale = 0.75f; jpegQuality = 75 }   // HD
-                    4 -> { scale = 1.00f; jpegQuality = 85 }   // Full
-                    else -> { scale = 0.32f; jpegQuality = 35 } // Low
+                    1 -> { scale = 0.45f; jpegQuality = 50 }
+                    2 -> { scale = 0.55f; jpegQuality = 60 }
+                    3 -> { scale = 0.75f; jpegQuality = 75 }
+                    4 -> { scale = 1.00f; jpegQuality = 85 }
+                    else -> { scale = 0.32f; jpegQuality = 35 }
                 }
                 if (data != null) startShare(code, data)
             }
@@ -105,7 +118,7 @@ class ShareService : Service() {
         if (projection == null) { stopSelf(); return }
 
         if (wantControl) {
-            controlServer = ControlServer(CONTROL_PORT).also { it.start() }
+            controlServer = ControlServer(CONTROL_PORT, sessionToken).also { it.start() }
             registerControlEndpoint()
         }
 
@@ -137,7 +150,8 @@ class ShareService : Service() {
                 bmp.compress(Bitmap.CompressFormat.JPEG, jpegQuality, baos)
                 bmp.recycle()
                 val bytes = baos.toByteArray()
-                thread(name = "post-frame") { postBytes("/frame", "image/jpeg", bytes) }
+                latestFrame.set(bytes)
+                ensureFrameSender()
             } catch (e: Exception) {
                 Log.w(TAG, "frame", e)
             } finally {
@@ -168,12 +182,15 @@ class ShareService : Service() {
         val controlUrl = "http://$ip:$CONTROL_PORT"
         thread {
             try {
-                val body = """{"control":"$controlUrl"}""".toByteArray()
+                val body = """{"control":"$controlUrl","token":"$sessionToken"}""".toByteArray()
                 val url = URL("$hostBase/register")
                 val c = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
+                    if (sessionToken.isNotEmpty()) {
+                        setRequestProperty("X-ScreenLink-Token", sessionToken)
+                    }
                     setFixedLengthStreamingMode(body.size)
                     connectTimeout = 3000
                     readTimeout = 3000
@@ -195,7 +212,10 @@ class ShareService : Service() {
         val rowPadding = rowStride - pixelStride * w
         val bitmap = Bitmap.createBitmap(w + rowPadding / pixelStride, h, Bitmap.Config.ARGB_8888)
         bitmap.copyPixelsFromBuffer(buf)
-        return if (rowPadding == 0) bitmap else Bitmap.createBitmap(bitmap, 0, 0, w, h)
+        if (rowPadding == 0) return bitmap
+        val cropped = Bitmap.createBitmap(bitmap, 0, 0, w, h)
+        bitmap.recycle()
+        return cropped
     }
 
     private fun startAudioCapture() {
@@ -231,6 +251,24 @@ class ShareService : Service() {
         }
     }
 
+    private fun ensureFrameSender() {
+        if (frameSenderRunning.getAndSet(true)) return
+        thread(name = "frame-sender") {
+            try {
+                while (running.get()) {
+                    val bytes = latestFrame.getAndSet(null)
+                    if (bytes == null) {
+                        try { Thread.sleep(15) } catch (_: Exception) {}
+                        continue
+                    }
+                    postBytes("/frame", "image/jpeg", bytes)
+                }
+            } finally {
+                frameSenderRunning.set(false)
+            }
+        }
+    }
+
     private fun postBytes(path: String, mime: String, body: ByteArray) {
         try {
             val c = (URL(hostBase + path).openConnection() as HttpURLConnection).apply {
@@ -239,6 +277,9 @@ class ShareService : Service() {
                 connectTimeout = 3000
                 readTimeout = 3000
                 setRequestProperty("Content-Type", mime)
+                if (sessionToken.isNotEmpty()) {
+                    setRequestProperty("X-ScreenLink-Token", sessionToken)
+                }
                 setFixedLengthStreamingMode(body.size)
             }
             c.outputStream.use { out: OutputStream -> out.write(body) }

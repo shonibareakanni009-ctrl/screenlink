@@ -196,7 +196,25 @@ class ShareService : Service() {
                     readTimeout = 3000
                 }
                 c.outputStream.use { it.write(body) }
-                Log.i(TAG, "Registered control $controlUrl → ${c.responseCode}")
+                val code = c.responseCode
+                val respText = try { c.inputStream.bufferedReader().readText() } catch (_: Exception) {
+                    try { c.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { "" }
+                } ?: ""
+                Log.i(TAG, "Registered control $controlUrl → $code $respText")
+                if (code in 200..299 && respText.isNotBlank()) {
+                    try {
+                        val jo = org.json.JSONObject(respText)
+                        val newTok = jo.optString("token", "")
+                        if (newTok.isNotEmpty()) {
+                            sessionToken = newTok
+                            Log.i(TAG, "Session token rotated after register")
+                            try { controlServer?.stop() } catch (_: Exception) {}
+                            controlServer = ControlServer(CONTROL_PORT, sessionToken).also { it.start() }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "register body parse: ${e.message}")
+                    }
+                }
                 c.disconnect()
             } catch (e: Exception) {
                 Log.w(TAG, "register failed: ${e.message}")

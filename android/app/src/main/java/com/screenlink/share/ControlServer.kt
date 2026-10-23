@@ -11,11 +11,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 /**
- * HTTP control server on the phone. Requires X-ScreenLink-Token when expectedToken is set.
+ * HTTP control server on the phone. expectedToken can be updated as Chromebook rotates tokens.
  */
-class ControlServer(private val port: Int = 8081, private val expectedToken: String = "") {
+class ControlServer(private val port: Int = 8081, token: String = "") {
+    @Volatile private var expectedToken: String = token
     private val running = AtomicBoolean(false)
     private var server: ServerSocket? = null
+
+    fun updateToken(token: String) {
+        expectedToken = token
+    }
 
     fun start() {
         if (running.getAndSet(true)) return

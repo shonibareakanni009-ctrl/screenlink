@@ -8,6 +8,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
@@ -28,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startBtn: Button
     private lateinit var stopBtn: Button
     private lateinit var statusText: TextView
+    private lateinit var accessBtn: Button
 
     private val reqProjection = 1001
     private val reqPerms = 1002
@@ -43,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         startBtn = findViewById(R.id.startBtn)
         stopBtn = findViewById(R.id.stopBtn)
         statusText = findViewById(R.id.statusText)
+        accessBtn = findViewById(R.id.accessBtn)
 
         val prefs = getSharedPreferences("screenlink", MODE_PRIVATE)
         hostInput.setText(prefs.getString("host", "http://192.168.1.1:8080"))
@@ -57,12 +60,37 @@ class MainActivity : AppCompatActivity() {
             audioCheck.isEnabled = false
         }
 
-        findViewById<Button>(R.id.accessBtn).setOnClickListener {
+        accessBtn.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            Toast.makeText(this, "Enable ScreenLink in Accessibility", Toast.LENGTH_LONG).show()
         }
         startBtn.setOnClickListener { ensurePermsThenStart() }
         stopBtn.setOnClickListener { stopShare() }
+        controlCheck.setOnCheckedChangeListener { _, _ -> refreshAccessUi() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshAccessUi()
+    }
+
+    private fun accessibilityOn(): Boolean = TapAccessibilityService.instance != null
+
+    private fun refreshAccessUi() {
+        val on = accessibilityOn()
+        if (on) {
+            accessBtn.visibility = View.GONE
+            if (controlCheck.isChecked) {
+                statusText.text = "Accessibility on. Paste Chromebook link and Start."
+            }
+        } else {
+            accessBtn.visibility = View.VISIBLE
+            accessBtn.text = if (controlCheck.isChecked) {
+                "Enable Accessibility (required for control)"
+            } else {
+                "Open Accessibility settings (optional)"
+            }
+            accessBtn.isEnabled = true
+        }
     }
 
     private fun ensurePermsThenStart() {
@@ -79,21 +107,37 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, need.toTypedArray(), reqPerms)
             return
         }
-        if (controlCheck.isChecked && TapAccessibilityService.instance == null) {
-            Toast.makeText(this, "Enable Accessibility for remote control first", Toast.LENGTH_LONG).show()
+        if (controlCheck.isChecked && !accessibilityOn()) {
+            Toast.makeText(
+                this,
+                "Turn on ScreenLink in Accessibility, then return here",
+                Toast.LENGTH_LONG
+            ).show()
+            accessBtn.visibility = View.VISIBLE
+            return
         }
         requestProjection()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == reqPerms) requestProjection()
+        if (requestCode == reqPerms) {
+            if (controlCheck.isChecked && !accessibilityOn()) {
+                refreshAccessUi()
+                return
+            }
+            requestProjection()
+        }
     }
 
     private fun requestProjection() {
         val host = hostInput.text.toString().trim().trimEnd('/')
         if (!host.startsWith("http://") && !host.startsWith("https://")) {
-            Toast.makeText(this, "Enter full URL like http://192.168.x.x:8080", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Enter full URL like http://192.168.x.x:8080?t=TOKEN", Toast.LENGTH_LONG).show()
             return
         }
         getSharedPreferences("screenlink", MODE_PRIVATE).edit()
@@ -120,12 +164,12 @@ class MainActivity : AppCompatActivity() {
             putExtra(ShareService.EXTRA_HOST, host)
             putExtra(ShareService.EXTRA_QUALITY, qualitySpinner.selectedItemPosition)
             putExtra(ShareService.EXTRA_AUDIO, audioCheck.isChecked)
-            putExtra(ShareService.EXTRA_CONTROL, controlCheck.isChecked)
+            putExtra(ShareService.EXTRA_CONTROL, controlCheck.isChecked && accessibilityOn())
         }
         ContextCompat.startForegroundService(this, i)
         startBtn.isEnabled = false
         stopBtn.isEnabled = true
-        statusText.text = "Linked to $host\nClick the mirror on the Chromebook to control this phone."
+        statusText.text = "Linked to $host"
     }
 
     private fun stopShare() {
@@ -133,5 +177,6 @@ class MainActivity : AppCompatActivity() {
         startBtn.isEnabled = true
         stopBtn.isEnabled = false
         statusText.text = "Stopped"
+        refreshAccessUi()
     }
 }

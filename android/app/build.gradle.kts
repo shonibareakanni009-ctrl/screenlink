@@ -9,8 +9,8 @@ android {
         applicationId = "com.screenlink.share"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 157
+        versionName = "1.5.7"
     }
     buildTypes {
         release {

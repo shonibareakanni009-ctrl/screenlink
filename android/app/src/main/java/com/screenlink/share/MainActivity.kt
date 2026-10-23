@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -66,6 +67,45 @@ class MainActivity : AppCompatActivity() {
         startBtn.setOnClickListener { ensurePermsThenStart() }
         stopBtn.setOnClickListener { stopShare() }
         controlCheck.setOnCheckedChangeListener { _, _ -> refreshAccessUi() }
+
+        applyDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        applyDeepLink(intent)
+    }
+
+    /** screenlink://connect?url=http://IP:8080?t=TOKEN */
+    private fun applyDeepLink(intent: Intent?) {
+        val data: Uri = intent?.data ?: return
+        if (intent.action != Intent.ACTION_VIEW) return
+        if (data.scheme != "screenlink") return
+
+        var hostUrl = data.getQueryParameter("url")
+            ?: data.getQueryParameter("host")
+            ?: data.getQueryParameter("u")
+        if (hostUrl.isNullOrBlank()) {
+            val ssp = data.schemeSpecificPart ?: ""
+            val idx = ssp.indexOf("http://")
+            val idxs = ssp.indexOf("https://")
+            val start = when {
+                idx >= 0 && (idxs < 0 || idx < idxs) -> idx
+                idxs >= 0 -> idxs
+                else -> -1
+            }
+            if (start >= 0) hostUrl = ssp.substring(start)
+        }
+        if (hostUrl.isNullOrBlank()) return
+
+        hostUrl = hostUrl.trim()
+        hostInput.setText(hostUrl)
+        getSharedPreferences("screenlink", MODE_PRIVATE).edit()
+            .putString("host", hostUrl)
+            .apply()
+        statusText.text = "Link received via deep link. Enable Accessibility if needed, then Start."
+        Toast.makeText(this, "Chromebook link loaded", Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {

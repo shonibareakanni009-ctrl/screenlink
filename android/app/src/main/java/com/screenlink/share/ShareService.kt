@@ -208,8 +208,7 @@ class ShareService : Service() {
                         if (newTok.isNotEmpty()) {
                             sessionToken = newTok
                             Log.i(TAG, "Session token rotated after register")
-                            try { controlServer?.stop() } catch (_: Exception) {}
-                            controlServer = ControlServer(CONTROL_PORT, sessionToken).also { it.start() }
+                            controlServer?.updateToken(sessionToken)
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "register body parse: ${e.message}")
@@ -302,6 +301,14 @@ class ShareService : Service() {
             }
             c.outputStream.use { out: OutputStream -> out.write(body) }
             c.responseCode
+            val next = c.getHeaderField("X-ScreenLink-Token")
+            if (!next.isNullOrBlank() && next != sessionToken) {
+                sessionToken = next
+                Log.i(TAG, "Token updated from response ($path)")
+                try { controlServer?.updateToken(sessionToken) } catch (e: Exception) {
+                    Log.w(TAG, "control token update: ${e.message}")
+                }
+            }
             c.disconnect()
         } catch (e: Exception) {
             Log.d(TAG, "post $path: ${e.message}")

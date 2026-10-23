@@ -11,11 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 /**
- * Tiny HTTP server on the phone so the Chromebook can POST taps/swipes.
- * POST /tap  body: {"x":0.5,"y":0.3}  (normalized 0..1)
- * POST /swipe body: {"x1":0.5,"y1":0.8,"x2":0.5,"y2":0.2}
+ * HTTP control server on the phone. Requires X-ScreenLink-Token when expectedToken is set.
  */
-class ControlServer(private val port: Int = 8081) {
+class ControlServer(private val port: Int = 8081, private val expectedToken: String = "") {
     private val running = AtomicBoolean(false)
     private var server: ServerSocket? = null
 
@@ -51,11 +49,15 @@ class ControlServer(private val port: Int = 8081) {
             val method = parts.getOrNull(0) ?: ""
             val path = parts.getOrNull(1) ?: "/"
             var contentLength = 0
+            var reqToken = ""
             while (true) {
                 val line = input.readLine() ?: break
                 if (line.isEmpty()) break
                 if (line.startsWith("Content-Length:", true)) {
                     contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
+                }
+                if (line.startsWith("X-ScreenLink-Token:", true)) {
+                    reqToken = line.substringAfter(":").trim()
                 }
             }
             val body = if (contentLength > 0) {
@@ -75,11 +77,21 @@ class ControlServer(private val port: Int = 8081) {
                 respond(socket, 204, "")
                 return
             }
+            if (method == "POST" && expectedToken.isNotEmpty()) {
+                val peek = try {
+                    JSONObject(if (body.isBlank()) "{}" else body).optString("token", "")
+                } catch (_: Exception) { "" }
+                if (reqToken != expectedToken && peek != expectedToken) {
+                    respond(socket, 403, "bad token")
+                    return
+                }
+            }
             if (method == "POST" && path.startsWith("/tap")) {
                 val j = JSONObject(if (body.isBlank()) "{}" else body)
-                val x = j.optDouble("x", -1.0).toFloat()
-                val y = j.optDouble("y", -1.0).toFloat()
-                ok = TapAccessibilityService.tapNormalized(x, y)
+                ok = TapAccessibilityService.tapNormalized(
+                    j.optDouble("x", -1.0).toFloat(),
+                    j.optDouble("y", -1.0).toFloat()
+                )
                 msg = if (ok) "tapped" else "accessibility_off_or_failed"
             } else if (method == "POST" && path.startsWith("/swipe")) {
                 val j = JSONObject(if (body.isBlank()) "{}" else body)
@@ -87,9 +99,34 @@ class ControlServer(private val port: Int = 8081) {
                     j.optDouble("x1", 0.5).toFloat(),
                     j.optDouble("y1", 0.8).toFloat(),
                     j.optDouble("x2", 0.5).toFloat(),
-                    j.optDouble("y2", 0.2).toFloat()
+                    j.optDouble("y2", 0.2).toFloat(),
+                    j.optLong("ms", 200)
                 )
                 msg = if (ok) "swiped" else "accessibility_off_or_failed"
+            } else if (method == "POST" && path.startsWith("/text")) {
+                val j = JSONObject(if (body.isBlank()) "{}" else body)
+                val text = j.optString("text", "")
+                ok = text.isNotEmpty() && TapAccessibilityService.typeText(text)
+                msg = if (ok) "typed" else "accessibility_off_or_no_field"
+            } else if (method == "POST" && path.startsWith("/key")) {
+                val j = JSONObject(if (body.isBlank()) "{}" else body)
+                val key = j.optString("key", "")
+                ok = when (key) {
+                    "Backspace", "Back", "Escape" -> TapAccessibilityService.globalBack()
+                    "Home" -> TapAccessibilityService.globalHome()
+                    "Enter" -> TapAccessibilityService.typeText("\n")
+                    else -> if (key.length == 1) TapAccessibilityService.typeText(key) else false
+                }
+                msg = if (ok) "key" else "accessibility_off_or_failed"
+            } else if (method == "POST" && path.startsWith("/back")) {
+                ok = TapAccessibilityService.globalBack()
+                msg = if (ok) "back" else "accessibility_off_or_failed"
+            } else if (method == "POST" && path.startsWith("/home")) {
+                ok = TapAccessibilityService.globalHome()
+                msg = if (ok) "home" else "accessibility_off_or_failed"
+            } else if (method == "POST" && path.startsWith("/recents")) {
+                ok = TapAccessibilityService.globalRecents()
+                msg = if (ok) "recents" else "accessibility_off_or_failed"
             } else if (method == "GET") {
                 respond(socket, 200, "ScreenLink control")
                 return
@@ -110,6 +147,7 @@ class ControlServer(private val port: Int = 8081) {
         val status = when (code) {
             200 -> "200 OK"
             204 -> "204 No Content"
+            403 -> "403 Forbidden"
             404 -> "404 Not Found"
             503 -> "503 Service Unavailable"
             else -> "$code Error"
@@ -117,7 +155,7 @@ class ControlServer(private val port: Int = 8081) {
         val head = "HTTP/1.1 $status\r\n" +
             "Access-Control-Allow-Origin: *\r\n" +
             "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
-            "Access-Control-Allow-Headers: Content-Type\r\n" +
+            "Access-Control-Allow-Headers: Content-Type, X-ScreenLink-Token\r\n" +
             "Content-Type: text/plain; charset=utf-8\r\n" +
             "Content-Length: ${bytes.size}\r\n\r\n"
         val out: OutputStream = socket.getOutputStream()

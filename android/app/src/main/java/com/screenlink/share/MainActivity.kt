@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopBtn: Button
     private lateinit var statusText: TextView
     private lateinit var accessBtn: Button
+    private lateinit var findBtn: Button
 
     private val reqProjection = 1001
     private val reqPerms = 1002
@@ -47,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         stopBtn = findViewById(R.id.stopBtn)
         statusText = findViewById(R.id.statusText)
         accessBtn = findViewById(R.id.accessBtn)
+        findBtn = findViewById(R.id.findBtn)
 
         val prefs = getSharedPreferences("screenlink", MODE_PRIVATE)
         hostInput.setText(prefs.getString("host", "http://192.168.1.1:8080"))
@@ -65,6 +67,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         startBtn.setOnClickListener { ensurePermsThenStart() }
+        findBtn.setOnClickListener { findChromebook() }
         stopBtn.setOnClickListener { stopShare() }
         controlCheck.setOnCheckedChangeListener { _, _ -> refreshAccessUi() }
 
@@ -77,7 +80,6 @@ class MainActivity : AppCompatActivity() {
         applyDeepLink(intent)
     }
 
-    /** screenlink://connect?url=http://IP:8080?t=TOKEN */
     private fun applyDeepLink(intent: Intent?) {
         val data: Uri = intent?.data ?: return
         if (intent.action != Intent.ACTION_VIEW) return
@@ -120,7 +122,7 @@ class MainActivity : AppCompatActivity() {
         if (on) {
             accessBtn.visibility = View.GONE
             if (controlCheck.isChecked) {
-                statusText.text = "Accessibility on. Paste Chromebook link and Start."
+                statusText.text = "Accessibility on. Find Chromebook or paste link, then Start."
             }
         } else {
             accessBtn.visibility = View.VISIBLE
@@ -131,6 +133,80 @@ class MainActivity : AppCompatActivity() {
             }
             accessBtn.isEnabled = true
         }
+    }
+
+    private fun findChromebook() {
+        findBtn.isEnabled = false
+        statusText.text = "Scanning Wi‑Fi for ScreenLink…"
+        Thread {
+            val found = mutableListOf<String>()
+            try {
+                val wm = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
+                @Suppress("DEPRECATION")
+                val ipInt = wm.connectionInfo.ipAddress
+                if (ipInt == 0) {
+                    runOnUiThread {
+                        statusText.text = "Not on Wi‑Fi — connect phone to the same network as the Chromebook"
+                        findBtn.isEnabled = true
+                    }
+                    return@Thread
+                }
+                val a = ipInt and 0xff
+                val b = ipInt shr 8 and 0xff
+                val c = ipInt shr 16 and 0xff
+                val base = "$a.$b.$c."
+                val self = ipInt shr 24 and 0xff
+                for (i in 1..254) {
+                    if (i == self) continue
+                    val host = "$base$i"
+                    try {
+                        val url = java.net.URL("http://$host:8080/")
+                        val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                            connectTimeout = 180
+                            readTimeout = 180
+                            requestMethod = "GET"
+                            instanceFollowRedirects = false
+                        }
+                        val code = conn.responseCode
+                        val body = try {
+                            conn.inputStream.bufferedReader().readText()
+                        } catch (_: Exception) {
+                            try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { "" }
+                        } ?: ""
+                        conn.disconnect()
+                        if (code in 200..499 && body.contains("ScreenLink", ignoreCase = true)) {
+                            found.add("http://$host:8080")
+                            if (found.size >= 3) break
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "Scan failed: ${e.message}"
+                    findBtn.isEnabled = true
+                }
+                return@Thread
+            }
+            runOnUiThread {
+                findBtn.isEnabled = true
+                if (found.isEmpty()) {
+                    statusText.text = "No ScreenLink receiver found. Start receiver on Chromebook, same Wi‑Fi."
+                } else {
+                    val pick = found[0]
+                    val cur = hostInput.text.toString()
+                    val token = Regex("[?&]t=([A-Za-z0-9_-]+)").find(cur)?.groupValues?.getOrNull(1)
+                    val filled = if (!token.isNullOrBlank()) "$pick?t=$token" else pick
+                    hostInput.setText(filled)
+                    statusText.text = if (token.isNullOrBlank()) {
+                        "Found ${found.size}: $pick — add ?t=TOKEN from Chromebook /session"
+                    } else {
+                        "Found ${found.size}: filled $filled"
+                    }
+                    Toast.makeText(this, "Chromebook found", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
     }
 
     private fun ensurePermsThenStart() {

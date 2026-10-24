@@ -21,8 +21,6 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      # v3 fails: Google removed the deprecated "tools" package.
-      # v4 + packages without "tools" works. Also install platform/build-tools for compileSdk 34.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -36,6 +34,12 @@ jobs:
         run: |
           gradle wrapper --gradle-version 8.2.1
           chmod +x gradlew
+
+      - name: Restore fixed debug keystore
+        working-directory: android/app
+        run: |
+          base64 -d screenlink-debug.jks.b64 > screenlink-debug.jks
+          ls -la screenlink-debug.jks
 
       - name: Build debug APK
         working-directory: android

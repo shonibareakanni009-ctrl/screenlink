@@ -9,12 +9,25 @@ android {
         applicationId = "com.screenlink.share"
         minSdk = 26
         targetSdk = 34
-        versionCode = 157
-        versionName = "1.5.7"
+        versionCode = 158
+        versionName = "1.5.8"
+    }
+    signingConfigs {
+        create("fixedDebug") {
+            // Same key every CI run so updates install without uninstall
+            storeFile = file("screenlink-debug.jks")
+            storePassword = "android"
+            keyAlias = "screenlink"
+            keyPassword = "android"
+        }
     }
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixedDebug")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("fixedDebug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
